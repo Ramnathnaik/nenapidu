@@ -4,7 +4,10 @@ import {
   createProfile,
   updateProfile,
   deleteProfile,
+  getProfileById,
 } from "@/app/utils/profileHelpers";
+import { deleteRemindersByProfileId } from "@/app/utils/reminderHelpers";
+import { deleteFromS3, extractFileNameFromS3Url } from "@/app/utils/s3";
 
 //Create API to create a new profile
 export async function POST(request: Request) {
@@ -94,13 +97,55 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const isDeleted = await deleteProfile(profileId);
-
-    if (!isDeleted) {
+    // First, get the profile data to check if there's an image to delete
+    const profile = await getProfileById(profileId);
+    if (!profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ message: "Profile deleted successfully" });
+    // Delete the profile image from S3 if it exists
+    let imageDeleted = false;
+    if (profile.profileImgUrl) {
+      try {
+        const fileName = extractFileNameFromS3Url(profile.profileImgUrl);
+        if (fileName) {
+          imageDeleted = await deleteFromS3(fileName);
+          if (imageDeleted) {
+            console.log(`Successfully deleted profile image: ${fileName}`);
+          } else {
+            console.warn(`Failed to delete profile image: ${fileName}`);
+          }
+        }
+      } catch (error) {
+        console.error("Error deleting profile image from S3:", error);
+        // Continue with profile deletion even if image deletion fails
+      }
+    }
+
+    // Delete all associated reminders
+    const remindersResult = await deleteRemindersByProfileId(profileId);
+    
+    if (!remindersResult.success) {
+      return NextResponse.json(
+        { error: "Failed to delete associated reminders" },
+        { status: 500 }
+      );
+    }
+
+    // Finally, delete the profile from the database
+    const isDeleted = await deleteProfile(profileId);
+
+    if (!isDeleted) {
+      return NextResponse.json({ error: "Failed to delete profile from database" }, { status: 500 });
+    }
+
+    const responseMessage = `Profile deleted successfully. ${remindersResult.deletedCount} associated reminder(s) were also deleted.${profile.profileImgUrl ? (imageDeleted ? ' Profile image was also deleted from storage.' : ' Note: Profile image deletion from storage failed.') : ''}`;
+
+    return NextResponse.json({ 
+      message: responseMessage,
+      deletedRemindersCount: remindersResult.deletedCount,
+      imageDeleted: imageDeleted || !profile.profileImgUrl
+    });
   } catch (error) {
     console.error("Failed to delete profile:", error);
     return NextResponse.json(
