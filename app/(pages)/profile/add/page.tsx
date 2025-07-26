@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
+import swal from "@/app/utils/swal";
 import ImageUpload from "@/app/components/ImageUpload";
 
 const AddProfilePage = () => {
@@ -24,17 +24,17 @@ const AddProfilePage = () => {
     e.preventDefault();
 
     if (!profileName) {
-      toast.error("Profile name is required.");
+      swal.error('Profile name required', 'Profile name is required.');
       return;
     }
 
     if (!userId) {
-      toast.error("User authentication required.");
+      swal.error('Authentication required', 'User authentication required.');
       return;
     }
 
     setIsSubmitting(true);
-    const loadingToast = toast.loading("Creating profile...");
+    swal.loading('Creating profile...', 'Please wait while we create your profile.');
 
     try {
       // Step 1: Create the profile
@@ -59,11 +59,7 @@ const AddProfilePage = () => {
 
       // Step 2: Upload image if one was selected
       if (selectedImage && newProfile.profileId) {
-        toast.update(loadingToast, {
-          render: "Uploading profile image...",
-          type: "info",
-          isLoading: true,
-        });
+        swal.loading('Uploading profile image...', 'Please wait while the image is being uploaded.');
 
         const formData = new FormData();
         formData.append("file", selectedImage);
@@ -81,27 +77,20 @@ const AddProfilePage = () => {
         }
       }
 
-      toast.update(loadingToast, {
-        render: "Profile created successfully!",
-        type: "success",
-        isLoading: false,
-        autoClose: 3000,
-      });
+      swal.success('Profile created!', 'Your profile was created successfully.');
 
       setTimeout(() => {
         router.push("/dashboard");
       }, 1500);
     } catch (error) {
       console.error("Failed to create profile:", error);
-      toast.update(loadingToast, {
-        render:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred. Please try again.",
-        type: "error",
-        isLoading: false,
-        autoClose: 5000,
-      });
+      swal.error(
+        'An error occurred',
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred. Please try again.",
+        5000
+      );
     } finally {
       setIsSubmitting(false);
     }

@@ -1,11 +1,15 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import swal from "@/app/utils/swal";
+import ReminderAccordion from "@/app/components/ReminderAccordion";
 
 interface Profile {
   profileId: string;
@@ -15,11 +19,32 @@ interface Profile {
   userId?: string;
 }
 
+interface Reminder {
+  id: string;
+  title: string;
+  description?: string;
+  dateToRemember: string;
+  completed: boolean;
+  frequency: "NEVER" | "MONTH" | "YEAR";
+  shouldExpire: boolean;
+  profileId: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const ProfilePage = () => {
   const { profileId } = useParams();
+  const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [remindersLoading, setRemindersLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [expandedReminders, setExpandedReminders] = useState<Set<string>>(
+    new Set()
+  );
+  const [deletingReminder, setDeletingReminder] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -38,14 +63,18 @@ const ProfilePage = () => {
           const errorData = await response.json();
           console.error("Failed to fetch profile", errorData);
           setError(true);
-          toast.error(
-            `Failed to load profile: ${errorData.error || "Unknown error"}`
+          swal.error(
+            "Failed to load profile",
+            errorData.error || "Unknown error"
           );
         }
       } catch (error) {
         console.error("Failed to fetch profile:", error);
         setError(true);
-        toast.error("Failed to load profile. Please try again.");
+        swal.error(
+          "Error loading profile",
+          "Failed to load profile. Please try again."
+        );
       } finally {
         setLoading(false);
       }
@@ -53,6 +82,134 @@ const ProfilePage = () => {
 
     fetchProfile();
   }, [profileId]);
+
+  // Fetch reminders for the profile
+  useEffect(() => {
+    const fetchReminders = async () => {
+      if (!profileId) {
+        setRemindersLoading(false);
+        return;
+      }
+
+      try {
+        setRemindersLoading(true);
+        const response = await fetch(`/api/reminders/profile/${profileId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setReminders(data);
+        } else {
+          console.error("Failed to fetch reminders");
+          swal.error(
+            "Error loading reminders",
+            "Failed to load reminders for this profile."
+          );
+        }
+      } catch (error) {
+        console.error("Failed to fetch reminders:", error);
+        swal.error(
+          "Error loading reminders",
+          "Failed to load reminders for this profile."
+        );
+      } finally {
+        setRemindersLoading(false);
+      }
+    };
+
+    fetchReminders();
+  }, [profileId]);
+
+  // Toggle reminder expansion
+  const toggleReminderExpansion = (reminderId: string) => {
+    const newExpanded = new Set(expandedReminders);
+    if (newExpanded.has(reminderId)) {
+      newExpanded.delete(reminderId);
+    } else {
+      newExpanded.add(reminderId);
+    }
+    setExpandedReminders(newExpanded);
+  };
+
+  // Handle edit reminder
+  const handleEditReminder = (reminderId: string) => {
+    router.push(`/reminder/${reminderId}/edit`);
+  };
+
+  // Handle delete reminder
+  const handleDeleteReminder = async (reminderId: string) => {
+    const result = await swal.warning(
+      "Delete Reminder?",
+      "Are you sure you want to delete this reminder? This action cannot be undone.",
+      "Yes, delete it!",
+      "Cancel"
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    setDeletingReminder(reminderId);
+    swal.loading(
+      "Deleting reminder...",
+      "Please wait while we delete the reminder."
+    );
+
+    try {
+      const response = await fetch("/api/reminders", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: reminderId }),
+      });
+
+      if (response.ok) {
+        setReminders(reminders.filter((r) => r.id !== reminderId));
+        swal.success(
+          "Reminder deleted!",
+          "The reminder has been deleted successfully."
+        );
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete reminder");
+      }
+    } catch (error) {
+      console.error("Failed to delete reminder:", error);
+      let message = "Failed to delete reminder";
+      if (error instanceof Error) {
+        message = error.message;
+      }
+      swal.error("Deletion failed", message, 5000);
+    } finally {
+      setDeletingReminder(null);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Get frequency display text
+  const getFrequencyText = (frequency: string) => {
+    switch (frequency) {
+      case "NEVER":
+        return "One-time";
+      case "MONTH":
+        return "Monthly";
+      case "YEAR":
+        return "Yearly";
+      default:
+        return frequency;
+    }
+  };
 
   return (
     <main className="flex-1 p-8 h-full overflow-y-auto bg-gray-300 dark:bg-gray-800">
@@ -129,13 +286,53 @@ const ProfilePage = () => {
                 </p>
               </div>
             </div>
-            <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-6">
-              <h3 className="text-sm font-medium text-violet-800 dark:text-violet-200 mb-2 uppercase tracking-wide">
-                Profile ID
-              </h3>
-              <p className="text-violet-600 dark:text-violet-300 font-mono text-sm">
-                {profile.profileId}
-              </p>
+
+            {/* Reminders Section */}
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                  <Bell className="w-5 h-5" />
+                  Reminders ({reminders.length})
+                </h2>
+                <Link
+                  href={`/reminder/add?profileId=${
+                    profile.profileId
+                  }&profileName=${encodeURIComponent(profile.profileName)}`}
+                  className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors text-sm font-medium"
+                >
+                  Add Reminder
+                </Link>
+              </div>
+
+              {remindersLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500"></div>
+                  <span className="ml-3 text-gray-600 dark:text-gray-400">
+                    Loading reminders...
+                  </span>
+                </div>
+              ) : reminders.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400 mb-2">
+                    No reminders yet
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                    Create your first reminder for this profile
+                  </p>
+                </div>
+              ) : (
+                <ReminderAccordion
+                  reminders={reminders}
+                  expandedReminders={expandedReminders}
+                  deletingReminder={deletingReminder}
+                  onToggleExpansion={toggleReminderExpansion}
+                  onEdit={handleEditReminder}
+                  onDelete={handleDeleteReminder}
+                  formatDate={formatDate}
+                  getFrequencyText={getFrequencyText}
+                />
+              )}
             </div>
           </div>
         </div>

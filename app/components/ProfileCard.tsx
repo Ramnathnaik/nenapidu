@@ -6,17 +6,15 @@ import {
   Bell,
   Calendar,
   Edit3,
-  Eye,
   MoreHorizontal,
   Trash2,
   User,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "react-toastify";
+import swal from "@/app/utils/swal";
 
 // DeleteConfirmationModal component
 interface DeleteConfirmationModalProps {
@@ -168,12 +166,12 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   // Handle Delete Profile
   const handleDeleteProfile = async () => {
     if (!userId) {
-      toast.error("Authentication required");
+      swal.error('Authentication required', 'Please log in to delete this profile.');
       return;
     }
 
     setIsDeleting(true);
-    const loadingToast = toast.loading("Deleting profile...");
+    swal.loading('Deleting profile...', 'Please wait while we delete your profile.');
 
     try {
       const response = await fetch("/api/profiles", {
@@ -189,12 +187,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
         throw new Error(errorData.error || "Failed to delete profile");
       }
 
-      toast.update(loadingToast, {
-        render: "Profile deleted successfully!",
-        type: "success",
-        isLoading: false,
-        autoClose: 3000,
-      });
+      swal.success('Profile deleted!', 'Your profile has been deleted successfully.');
 
       // Call callback if provided
       if (onProfileDeleted) {
@@ -206,12 +199,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       if (error instanceof Error) {
         message = error.message;
       }
-      toast.update(loadingToast, {
-        render: message,
-        type: "error",
-        isLoading: false,
-        autoClose: 5000,
-      });
+      swal.error('Deletion failed', message, 5000);
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -225,9 +213,15 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
     setShowDeleteConfirm(false);
   };
 
+  // Handle card click to navigate to profile page
+  const handleCardClick = () => {
+    router.push(`/profile/${profile.profileId}`);
+  };
+
   return (
     <div
-      className={`group relative bg-white dark:bg-gray-900 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100 dark:border-gray-800 overflow-hidden ${className}`}
+      onClick={handleCardClick}
+      className={`group relative bg-white dark:bg-gray-900 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100 dark:border-gray-800 overflow-hidden cursor-pointer ${className}`}
     >
       {/* Card Header with Gradient Background */}
       <div className="relative h-24 bg-gradient-to-br from-violet-900 via-purple-800 to-indigo-500">
@@ -240,6 +234,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
               <button
                 onClick={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   setShowMenu(!showMenu);
                 }}
                 className="p-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
@@ -260,6 +255,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                     <button
                       onClick={(e) => {
                         e.preventDefault();
+                        e.stopPropagation();
                         handleUpdateProfile();
                       }}
                       className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -272,6 +268,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                     <button
                       onClick={(e) => {
                         e.preventDefault();
+                        e.stopPropagation();
                         handleCreateReminder();
                       }}
                       className="flex items-center gap-2 w-full px-3 py-2 text-sm text-indigo-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
@@ -286,6 +283,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                     <button
                       onClick={(e) => {
                         e.preventDefault();
+                        e.stopPropagation();
                         setShowDeleteConfirm(true);
                         setShowMenu(false);
                       }}
@@ -375,14 +373,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
               Profile
             </div>
           </div>
-
-          {/* View Button */}
-          <Link href={`/profile/${profile.profileId}`}>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg transition-colors">
-              <Eye className="w-4 h-4" />
-              <span>View</span>
-            </button>
-          </Link>
         </div>
       </div>
 

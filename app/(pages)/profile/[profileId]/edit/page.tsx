@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { toast } from "react-toastify";
+import swal from "@/app/utils/swal";
 import ImageUpload from "@/app/components/ImageUpload";
 
 interface Profile {
@@ -40,12 +40,12 @@ const EditProfilePage = () => {
           setProfileName(data.profileName || "");
           setProfileDescription(data.profileDescription || "");
         } else {
-          toast.error("Failed to load profile");
+          swal.error('Failed to load profile', 'Could not load the profile for editing.');
           router.push("/dashboard");
         }
       } catch (error) {
         console.error("Failed to fetch profile:", error);
-        toast.error("Failed to load profile");
+        swal.error('Failed to load profile', 'Could not load the profile for editing.');
         router.push("/dashboard");
       } finally {
         setLoading(false);
@@ -59,7 +59,7 @@ const EditProfilePage = () => {
     if (!profile || !userId) return;
 
     setImageUploading(true);
-    const loadingToast = toast.loading("Uploading image...");
+    swal.loading('Uploading image...', 'Please wait while we upload your image.');
 
     try {
       const formData = new FormData();
@@ -82,24 +82,14 @@ const EditProfilePage = () => {
         prev ? { ...prev, profileImgUrl: result.profileImgUrl } : null
       );
 
-      toast.update(loadingToast, {
-        render: "Image uploaded successfully!",
-        type: "success",
-        isLoading: false,
-        autoClose: 3000,
-      });
+      swal.success('Image uploaded!', 'Your profile image has been uploaded successfully.');
     } catch (error: unknown) {
       console.error("Failed to upload image:", error);
       let message = "Failed to upload image";
       if (error instanceof Error) {
         message = error.message;
       }
-      toast.update(loadingToast, {
-        render: message,
-        type: "error",
-        isLoading: false,
-        autoClose: 5000,
-      });
+      swal.error('Upload failed', message, 5000);
     } finally {
       setImageUploading(false);
     }
@@ -109,7 +99,7 @@ const EditProfilePage = () => {
     if (!profile || !userId) return;
 
     setImageUploading(true);
-    const loadingToast = toast.loading("Removing image...");
+    swal.loading('Removing image...', 'Please wait while we remove your image.');
 
     try {
       const response = await fetch("/api/profiles/upload-image", {
@@ -130,24 +120,14 @@ const EditProfilePage = () => {
 
       setProfile((prev) => (prev ? { ...prev, profileImgUrl: null } : null));
 
-      toast.update(loadingToast, {
-        render: "Image removed successfully!",
-        type: "success",
-        isLoading: false,
-        autoClose: 3000,
-      });
+      swal.success('Image removed!', 'Your profile image has been removed successfully.');
     } catch (error: unknown) {
       console.error("Failed to remove image:", error);
       let message = "Failed to remove image";
       if (error instanceof Error) {
         message = error.message;
       }
-      toast.update(loadingToast, {
-        render: message,
-        type: "error",
-        isLoading: false,
-        autoClose: 5000,
-      });
+      swal.error('Removal failed', message, 5000);
     } finally {
       setImageUploading(false);
     }
@@ -157,17 +137,17 @@ const EditProfilePage = () => {
     e.preventDefault();
 
     if (!profileName) {
-      toast.error("Profile name is required.");
+      swal.error('Profile name required', 'Please enter a profile name before saving.');
       return;
     }
 
     if (!profile) {
-      toast.error("Profile data not loaded.");
+      swal.error('Profile data error', 'Profile data has not been loaded properly.');
       return;
     }
 
     setIsSubmitting(true);
-    const loadingToast = toast.loading("Updating profile...");
+    swal.loading('Updating profile...', 'Please wait while we save your changes.');
 
     try {
       const response = await fetch("/api/profiles", {
@@ -187,12 +167,7 @@ const EditProfilePage = () => {
         throw new Error(errorData.error || "Failed to update profile");
       }
 
-      toast.update(loadingToast, {
-        render: "Profile updated successfully!",
-        type: "success",
-        isLoading: false,
-        autoClose: 3000,
-      });
+      swal.success('Profile updated!', 'Your profile has been updated successfully.');
 
       setTimeout(() => {
         router.push(`/profile/${profile.profileId}`);
@@ -203,12 +178,7 @@ const EditProfilePage = () => {
       if (error instanceof Error) {
         message = error.message;
       }
-      toast.update(loadingToast, {
-        render: message,
-        type: "error",
-        isLoading: false,
-        autoClose: 5000,
-      });
+      swal.error('Update failed', message, 5000);
     } finally {
       setIsSubmitting(false);
     }
