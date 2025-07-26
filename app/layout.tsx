@@ -1,16 +1,10 @@
+import { ClerkProvider, SignedIn } from "@clerk/nextjs";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Sidebar from "./components/Sidebar";
+import ThemeWrapper from "./components/ThemeWrapper";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -24,11 +18,30 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+      <ClerkProvider>
+        <body>
+          <ThemeWrapper>
+            <div className="flex w-full">
+              <SignedIn>
+                <Sidebar />
+              </SignedIn>
+              <main className="flex-1">{children}</main>
+            </div>
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="colored"
+            />
+          </ThemeWrapper>
+        </body>
+      </ClerkProvider>
     </html>
   );
 }
