@@ -254,6 +254,34 @@ export async function deleteReminder(reminderId: string) {
 }
 
 /**
+ * Deletes all reminders associated with a specific profile
+ * @param profileId - The profile ID
+ * @returns Promise<{success: boolean, deletedCount: number}> - Deletion result with count
+ */
+export async function deleteRemindersByProfileId(profileId: string): Promise<{success: boolean, deletedCount: number}> {
+  try {
+    const deletedReminders = await db
+      .delete(remindersTable)
+      .where(eq(remindersTable.profileId, profileId))
+      .returning();
+
+    const deletedCount = deletedReminders.length;
+    console.log(`Deleted ${deletedCount} reminders for profile ${profileId}`);
+    
+    return {
+      success: true,
+      deletedCount
+    };
+  } catch (error) {
+    console.error("Error deleting reminders by profile ID:", error);
+    return {
+      success: false,
+      deletedCount: 0
+    };
+  }
+}
+
+/**
  * Checks if a reminder exists in the database
  * @param reminderId - The reminder ID
  * @returns Promise<boolean> - Whether the reminder exists

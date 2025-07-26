@@ -3,133 +3,239 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { FREQUENCY_OPTIONS } from "@/app/types/reminder";
-import swal from "@/app/utils/swal";
+import Swal from "sweetalert2";
 
-interface Profile {
-  profileId: string;
-  profileName: string;
-  profileDescription?: string | null;
-  profileImgUrl?: string | null;
-  userId?: string;
+interface Reminder {
+  id: string;
+  title: string;
+  description?: string;
+  dateToRemember: string;
+  completed: boolean;
+  frequency: "NEVER" | "MONTH" | "YEAR";
+  shouldExpire: boolean;
+  profileId?: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-const AddReminderPage = () => {
+const EditReminderPage = () => {
   const { userId } = useAuth();
   const router = useRouter();
+  const { reminderId } = useParams();
+
+  const [reminder, setReminder] = useState<Reminder | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(false);
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dateToRemember, setDateToRemember] = useState("");
   const [frequency, setFrequency] = useState("NEVER");
   const [shouldExpire, setShouldExpire] = useState(false);
-  const [profileId, setProfileId] = useState<string | null>(null);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [profilesLoading, setProfilesLoading] = useState(true);
+  const [completed, setCompleted] = useState(false);
 
+  // Fetch reminder data
   useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const profileParam = queryParams.get("profileId");
-    setProfileId(profileParam);
-  }, []);
-
-  // Fetch user profiles
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      if (!userId) return;
+    const fetchReminder = async () => {
+      if (!reminderId) {
+        setLoading(false);
+        return;
+      }
 
       try {
-        const response = await fetch(`/api/profiles/${userId}`);
+        setLoading(true);
+        const response = await fetch(`/api/reminders/single/${reminderId}`);
         if (response.ok) {
-          const profilesData = await response.json();
-          setProfiles(profilesData || []);
+          const data = await response.json();
+          setReminder(data);
 
-          // If no profileId is set from query params and profiles exist, set the first one as default
-          if (!profileId && profilesData && profilesData.length > 0) {
-            setProfileId(profilesData[0].profileId);
-          }
+          // Populate form fields
+          setTitle(data.title);
+          setDescription(data.description || "");
+          setDateToRemember(data.dateToRemember);
+          setFrequency(data.frequency);
+          setShouldExpire(data.shouldExpire);
+          setCompleted(data.completed);
+        } else {
+          const errorData = await response.json();
+          console.error("Failed to fetch reminder", errorData);
+          setError(true);
+          Swal.fire({
+            title: 'Error!',
+            text: `Failed to load reminder: ${errorData.error || "Unknown error"}`,
+            icon: 'error',
+            confirmButtonColor: '#ef4444'
+          });
         }
       } catch (error) {
-        console.error("Failed to fetch profiles:", error);
-        swal.error("Error!", "Failed to load profiles");
+        console.error("Failed to fetch reminder:", error);
+        setError(true);
+        Swal.fire({
+          title: 'Error!',
+          text: 'Failed to load reminder. Please try again.',
+          icon: 'error',
+          confirmButtonColor: '#ef4444'
+        });
       } finally {
-        setProfilesLoading(false);
+        setLoading(false);
       }
     };
 
-    fetchProfiles();
-  }, [userId, profileId]);
+    fetchReminder();
+  }, [reminderId]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!title || !dateToRemember) {
-      swal.warning("Missing Information", "Title and Date are required.");
+      Swal.fire({
+        title: 'Missing Information',
+        text: 'Title and Date are required.',
+        icon: 'warning',
+        confirmButtonColor: '#ef4444'
+      });
       return;
     }
 
-    if (!profileId) {
-      swal.warning(
-        "Missing Profile",
-        "Please select a profile for this reminder."
-      );
+    if (!reminder) {
+      Swal.fire({
+        title: 'Error',
+        text: 'Reminder data not loaded.',
+        icon: 'error',
+        confirmButtonColor: '#ef4444'
+      });
       return;
     }
 
     // Format dateToRemember to YYYY-MM-dd
     const formattedDate = new Date(dateToRemember).toISOString().slice(0, 10);
 
+    setSubmitting(true);
+    
     // Show loading alert
-    swal.loading(
-      "Creating Reminder...",
-      "Please wait while we create your reminder."
-    );
+    Swal.fire({
+      title: 'Updating Reminder...',
+      text: 'Please wait while we update your reminder.',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
 
     try {
       const response = await fetch("/api/reminders", {
-        method: "POST",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          id: reminder.id,
           title,
           description,
           dateToRemember: formattedDate,
           frequency,
           shouldExpire,
-          completed: false,
+          completed,
           userId,
-          profileId,
+          profileId: reminder.profileId,
         }),
       });
 
       if (response.ok) {
-        await swal.success("Success!", "Reminder created successfully!");
-        router.push("/dashboard");
+        await Swal.fire({
+          title: 'Updated!',
+          text: 'Reminder updated successfully!',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
+        // Navigate back to profile page if there's a profileId, otherwise dashboard
+        if (reminder.profileId) {
+          router.push(`/profile/${reminder.profileId}`);
+        } else {
+          router.push("/dashboard");
+        }
       } else {
         const errorData = await response.json();
-        await swal.error(
-          "Error!",
-          `Failed to add reminder: ${errorData.error}`
-        );
+        await Swal.fire({
+          title: 'Error!',
+          text: `Failed to update reminder: ${errorData.error}`,
+          icon: 'error',
+          confirmButtonColor: '#ef4444'
+        });
       }
     } catch (error) {
-      console.error("Failed to add reminder:", error);
-      await swal.error(
-        "Error!",
-        "An unexpected error occurred. Please try again."
-      );
+      console.error("Failed to update reminder:", error);
+      await Swal.fire({
+        title: 'Error!',
+        text: 'An unexpected error occurred. Please try again.',
+        icon: 'error',
+        confirmButtonColor: '#ef4444'
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const getBackLink = () => {
+    if (reminder?.profileId) {
+      return `/profile/${reminder.profileId}`;
+    }
+    return "/dashboard";
+  };
+
+  if (loading) {
+    return (
+      <main className="flex-1 p-4 md:p-8 h-full overflow-y-auto bg-gray-300 dark:bg-gray-800">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-500 mx-auto mb-4"></div>
+            <p className="text-lg text-gray-500 dark:text-gray-400">
+              Loading reminder...
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !reminder) {
+    return (
+      <main className="flex-1 p-4 md:p-8 h-full overflow-y-auto bg-gray-300 dark:bg-gray-800">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center max-w-md mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-md p-8">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">
+              Reminder Not Found
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              The reminder you&#39;re trying to edit could not be loaded. It may
+              have been deleted or you may not have permission to edit it.
+            </p>
+            <Link
+              href="/dashboard"
+              className="inline-block px-6 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex-1 p-4 md:p-8 h-full overflow-y-auto bg-gray-300 dark:bg-gray-800">
       <div className="flex items-center mb-6 md:mb-8">
-        <Link href="/dashboard">
+        <Link href={getBackLink()}>
           <ArrowLeft className="w-6 h-6 mr-4 text-gray-700 dark:text-gray-300 hover:text-violet-500 dark:hover:text-violet-400" />
         </Link>
         <h1 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-white">
-          Add New Reminder
+          Edit Reminder
         </h1>
       </div>
 
@@ -152,6 +258,7 @@ const AddReminderPage = () => {
                 className="w-full px-4 py-2 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                 placeholder="Enter reminder title"
                 required
+                disabled={submitting}
               />
             </div>
             <div className="mb-6">
@@ -168,52 +275,9 @@ const AddReminderPage = () => {
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-4 py-2 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                 placeholder="Enter reminder description"
+                disabled={submitting}
               />
             </div>
-
-            {/* Profile Selection */}
-            <div className="mb-6">
-              <label
-                htmlFor="profile-mobile"
-                className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Associate with Profile *
-              </label>
-              {profilesLoading ? (
-                <div className="w-full px-4 py-2 text-gray-500 bg-gray-100 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400">
-                  Loading profiles...
-                </div>
-              ) : profiles.length === 0 ? (
-                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
-                    No profiles found. Please create a profile first to add
-                    reminders.
-                  </p>
-                  <Link
-                    href="/profile/add"
-                    className="inline-flex items-center px-3 py-1 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-800/30 rounded-md hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
-                  >
-                    Create Profile
-                  </Link>
-                </div>
-              ) : (
-                <select
-                  id="profile-mobile"
-                  value={profileId || ""}
-                  onChange={(e) => setProfileId(e.target.value)}
-                  className="w-full px-4 py-2 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                  required
-                >
-                  <option value="">Select a profile</option>
-                  {profiles.map((profile) => (
-                    <option key={profile.profileId} value={profile.profileId}>
-                      {profile.profileName}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
             <div className="mb-6">
               <label
                 htmlFor="dateToRemember-mobile"
@@ -228,6 +292,7 @@ const AddReminderPage = () => {
                 onChange={(e) => setDateToRemember(e.target.value)}
                 className="w-full px-4 py-2 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                 required
+                disabled={submitting}
               />
             </div>
             <div className="mb-6">
@@ -242,6 +307,7 @@ const AddReminderPage = () => {
                 value={frequency}
                 onChange={(e) => setFrequency(e.target.value)}
                 className="w-full px-4 py-2 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                disabled={submitting}
               >
                 {FREQUENCY_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -257,6 +323,7 @@ const AddReminderPage = () => {
                 checked={shouldExpire}
                 onChange={(e) => setShouldExpire(e.target.checked)}
                 className="w-4 h-4 mr-2 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                disabled={submitting}
               />
               <label
                 htmlFor="shouldExpire-mobile"
@@ -265,12 +332,35 @@ const AddReminderPage = () => {
                 Should Expire
               </label>
             </div>
-            <div className="flex justify-end">
+            <div className="mb-6 flex items-center">
+              <input
+                type="checkbox"
+                id="completed-mobile"
+                checked={completed}
+                onChange={(e) => setCompleted(e.target.checked)}
+                className="w-4 h-4 mr-2 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                disabled={submitting}
+              />
+              <label
+                htmlFor="completed-mobile"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Mark as Completed
+              </label>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <Link
+                href={getBackLink()}
+                className="px-4 py-2 font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </Link>
               <button
                 type="submit"
-                className="px-6 py-2 font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700"
+                disabled={submitting}
+                className="px-6 py-2 font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Add Reminder
+                {submitting ? "Updating..." : "Update Reminder"}
               </button>
             </div>
           </form>
@@ -304,6 +394,7 @@ const AddReminderPage = () => {
                         className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                         placeholder="Enter reminder title"
                         required
+                        disabled={submitting}
                       />
                     </div>
                     <div>
@@ -320,6 +411,7 @@ const AddReminderPage = () => {
                         onChange={(e) => setDateToRemember(e.target.value)}
                         className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                         required
+                        disabled={submitting}
                       />
                     </div>
                   </div>
@@ -338,56 +430,11 @@ const AddReminderPage = () => {
                       onChange={(e) => setDescription(e.target.value)}
                       className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                       placeholder="Enter a detailed description for your reminder..."
+                      disabled={submitting}
                     />
                   </div>
 
-                  {/* Profile Selection */}
-                  <div className="mb-6">
-                    <label
-                      htmlFor="profile"
-                      className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      Associate with Profile *
-                    </label>
-                    {profilesLoading ? (
-                      <div className="w-full px-4 py-3 text-gray-500 bg-gray-100 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400">
-                        Loading profiles...
-                      </div>
-                    ) : profiles.length === 0 ? (
-                      <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                        <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
-                          No profiles found. Please create a profile first to
-                          add reminders.
-                        </p>
-                        <Link
-                          href="/profile/add"
-                          className="inline-flex items-center px-3 py-1 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-800/30 rounded-md hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
-                        >
-                          Create Profile
-                        </Link>
-                      </div>
-                    ) : (
-                      <select
-                        id="profile"
-                        value={profileId || ""}
-                        onChange={(e) => setProfileId(e.target.value)}
-                        className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                        required
-                      >
-                        <option value="">Select a profile</option>
-                        {profiles.map((profile) => (
-                          <option
-                            key={profile.profileId}
-                            value={profile.profileId}
-                          >
-                            {profile.profileName}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
                       <label
                         htmlFor="frequency"
@@ -400,6 +447,7 @@ const AddReminderPage = () => {
                         value={frequency}
                         onChange={(e) => setFrequency(e.target.value)}
                         className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                        disabled={submitting}
                       >
                         {FREQUENCY_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>
@@ -408,14 +456,15 @@ const AddReminderPage = () => {
                         ))}
                       </select>
                     </div>
-                    <div className="flex items-end">
-                      <div className="flex items-center h-12">
+                    <div className="flex flex-col justify-center space-y-4">
+                      <div className="flex items-center">
                         <input
                           type="checkbox"
                           id="shouldExpire"
                           checked={shouldExpire}
                           onChange={(e) => setShouldExpire(e.target.checked)}
                           className="w-5 h-5 mr-3 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                          disabled={submitting}
                         />
                         <label
                           htmlFor="shouldExpire"
@@ -424,21 +473,38 @@ const AddReminderPage = () => {
                           Should Expire
                         </label>
                       </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="completed"
+                          checked={completed}
+                          onChange={(e) => setCompleted(e.target.checked)}
+                          className="w-5 h-5 mr-3 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                          disabled={submitting}
+                        />
+                        <label
+                          htmlFor="completed"
+                          className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >
+                          Mark as Completed
+                        </label>
+                      </div>
                     </div>
                   </div>
 
                   <div className="flex justify-end space-x-4">
                     <Link
-                      href="/dashboard"
+                      href={getBackLink()}
                       className="px-6 py-3 font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
                     >
                       Cancel
                     </Link>
                     <button
                       type="submit"
-                      className="px-8 py-3 font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700 transition-colors shadow-lg"
+                      disabled={submitting}
+                      className="px-8 py-3 font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Create Reminder
+                      {submitting ? "Updating..." : "Update Reminder"}
                     </button>
                   </div>
                 </form>
@@ -447,6 +513,44 @@ const AddReminderPage = () => {
 
             {/* Sidebar with Additional Info */}
             <div className="xl:col-span-1">
+              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                  Reminder Info
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="font-medium text-gray-800 dark:text-white">
+                      Created
+                    </div>
+                    <div className="text-gray-600 dark:text-gray-400">
+                      {new Date(reminder.dateToRemember).toLocaleDateString(
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="font-medium text-gray-800 dark:text-white">
+                      Last Updated
+                    </div>
+                    <div className="text-gray-600 dark:text-gray-400">
+                      {new Date(reminder.dateToRemember).toLocaleDateString(
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 mb-6">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
                   Frequency Options
@@ -467,19 +571,6 @@ const AddReminderPage = () => {
                   ))}
                 </div>
               </div>
-
-              <div className="bg-violet-50 dark:bg-violet-900/20 rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-violet-800 dark:text-violet-200 mb-4">
-                  💡 Tips
-                </h3>
-                <ul className="space-y-2 text-sm text-violet-700 dark:text-violet-300">
-                  <li>• Use clear, descriptive titles for easy recognition</li>
-                  <li>• Set the date to when you want to be reminded</li>
-                  <li>• Choose yearly for birthdays and anniversaries</li>
-                  <li>• Monthly reminders work great for recurring tasks</li>
-                  <li>• Enable expiration for time-sensitive reminders</li>
-                </ul>
-              </div>
             </div>
           </div>
         </div>
@@ -488,4 +579,4 @@ const AddReminderPage = () => {
   );
 };
 
-export default AddReminderPage;
+export default EditReminderPage;

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Bell, Calendar, User } from "lucide-react";
-import Image from "next/image";
+import { Bell, ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import ReminderCard from "@/app/components/ReminderCard";
 
 interface Reminder {
-  reminderId: number;
+  id: number;
   description: string;
   dateToRemember: string;
   reminderType: string;
@@ -20,6 +21,20 @@ const RemindersPage = () => {
   const { user } = useUser();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleDeleteReminder = (reminderId: number) => {
+    setReminders((prevReminders) =>
+      prevReminders.filter((reminder) => reminder.id !== reminderId)
+    );
+  };
+
+  const handleUpdateReminder = (updatedReminder: Reminder) => {
+    setReminders((prevReminders) =>
+      prevReminders.map((reminder) =>
+        reminder.id === updatedReminder.id ? updatedReminder : reminder
+      )
+    );
+  };
 
   useEffect(() => {
     const fetchReminders = async () => {
@@ -40,40 +55,6 @@ const RemindersPage = () => {
 
     fetchReminders();
   }, [user?.id]);
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  // const formatTime = (dateString: string) => {
-  //   const date = new Date(dateString);
-  //   return date.toLocaleTimeString("en-US", {
-  //     hour: "numeric",
-  //     minute: "2-digit",
-  //     hour12: true,
-  //   });
-  // };
-
-  const getReminderTypeIcon = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case "birthday":
-        return "🎂";
-      case "anniversary":
-        return "💖";
-      case "meeting":
-        return "🤝";
-      case "call":
-        return "📞";
-      default:
-        return "⏰";
-    }
-  };
 
   if (loading) {
     return (
@@ -96,11 +77,13 @@ const RemindersPage = () => {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="h-full overflow-y-auto bg-gray-300 dark:bg-gray-800 p-6">
+      <div className="mx-auto lg:px-8">
         <div className="flex items-center mb-6">
-          <Bell className="w-8 h-8 mr-3 text-blue-600 dark:text-blue-400" />
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <Link href="/dashboard">
+            <ArrowLeft className="w-6 h-6 mr-4 text-gray-700 dark:text-gray-300 hover:text-violet-500 dark:hover:text-violet-400" />
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             My Reminders
           </h1>
         </div>
@@ -118,72 +101,12 @@ const RemindersPage = () => {
         ) : (
           <div className="space-y-4">
             {reminders.map((reminder) => (
-              <div
-                key={reminder.reminderId}
-                className={`bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border-l-4 ${
-                  !reminder.completed
-                    ? "border-blue-500"
-                    : "border-gray-300 dark:border-gray-600"
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center mb-2">
-                      <span className="text-2xl mr-2">
-                        {getReminderTypeIcon(reminder.reminderType)}
-                      </span>
-                      <span className="inline-block px-2 py-1 text-xs font-medium text-blue-800 dark:text-blue-200 bg-blue-100 dark:bg-blue-900 rounded-full mr-2">
-                        {reminder.reminderType}
-                      </span>
-                      {reminder.completed ? (
-                        <span className="inline-block px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-full">
-                          Inactive
-                        </span>
-                      ) : (
-                        <span className="inline-block px-2 py-1 text-xs font-medium text-green-800 dark:text-green-200 bg-green-100 dark:bg-green-900 rounded-full">
-                          Active
-                        </span>
-                      )}
-                    </div>
-
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      {reminder.description}
-                    </h3>
-
-                    <div className="flex items-center text-gray-600 dark:text-gray-400 mb-3">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      <span className="mr-4">
-                        {formatDate(reminder.dateToRemember)}
-                      </span>
-                    </div>
-
-                    {reminder.profileName && (
-                      <div className="flex items-center mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <User className="w-4 h-4 mr-2 text-gray-500" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400 mr-2">
-                          Related to:
-                        </span>
-                        <div className="flex items-center">
-                          {reminder.profileImgUrl && (
-                            <div className="relative w-6 h-6 mr-2">
-                              <Image
-                                src={reminder.profileImgUrl}
-                                alt={reminder.profileName}
-                                width={24}
-                                height={24}
-                                className="rounded-full object-cover"
-                              />
-                            </div>
-                          )}
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {reminder.profileName}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <ReminderCard
+                key={reminder.id}
+                reminder={reminder}
+                onDelete={handleDeleteReminder}
+                onUpdate={handleUpdateReminder}
+              />
             ))}
           </div>
         )}
