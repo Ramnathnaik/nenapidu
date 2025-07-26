@@ -1,12 +1,14 @@
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { Menu, Moon, Sun } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 import useTheme from "../utils/store";
 
 const Header = () => {
   const { darkMode, toggleDarkMode, toggleSidebar } = useTheme();
 
   return (
-    <div className="flex justify-between items-center w-full px-4 sm:px-16 py-6 bg-white dark:bg-gray-900 shadow-2xl">
+    <div className="flex justify-between items-center w-full px-4 sm:px-16 py-4 bg-white dark:bg-gray-900 shadow-2xl">
       <section className="flex items-center">
         <SignedIn>
           <Menu
@@ -14,7 +16,17 @@ const Header = () => {
             onClick={toggleSidebar}
           />
         </SignedIn>
-        <p className="text-gray-900 dark:text-white">Nenapidu</p>
+        <Link href="/" className="cursor-pointer">
+          <Image
+            src="/nenapidu-logo.png"
+            alt="Nenapidu Logo"
+            width={200}
+            height={60}
+            className="h-12 w-auto"
+            style={{ transform: "scale(1.5)" }}
+            priority
+          />
+        </Link>
       </section>
       <section className="flex items-center">
         {darkMode ? (
