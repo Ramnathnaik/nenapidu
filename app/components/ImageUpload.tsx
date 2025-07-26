@@ -3,7 +3,7 @@
 import { Camera, Trash2, Upload } from "lucide-react";
 import Image from "next/image";
 import React, { useRef, useState } from "react";
-import { toast } from "react-toastify";
+import swal from "@/app/utils/swal";
 
 interface ImageUploadProps {
   currentImageUrl?: string | null;
@@ -34,15 +34,17 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
 
     if (!allowedTypes.includes(file.type)) {
-      toast.error(
-        "Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image."
+      swal.error(
+        "Invalid file type",
+        "Please upload a JPEG, PNG, WebP, or GIF image."
       );
       return false;
     }
 
     if (file.size > maxSizeInBytes) {
-      toast.error(
-        `File size too large. Please upload an image smaller than ${maxSizeInMB}MB.`
+      swal.error(
+        "File too large",
+        `Please upload an image smaller than ${maxSizeInMB}MB.`
       );
       return false;
     }
@@ -65,7 +67,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       await onImageUpload(file);
     } catch (error) {
       console.error("Failed to upload image:", error);
-      toast.error("Failed to upload image. Please try again.");
+      swal.error("Upload failed", "Failed to upload image. Please try again.");
       setPreviewUrl(currentImageUrl || null);
     }
   };
@@ -107,10 +109,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     try {
       await onImageRemove();
       setPreviewUrl(null);
-      toast.success("Profile image removed successfully");
+      swal.success("Image removed", "Profile image removed successfully", 2000);
     } catch (error) {
       console.error("Failed to remove image:", error);
-      toast.error("Failed to remove image. Please try again.");
+      swal.error("Removal failed", "Failed to remove image. Please try again.");
     }
   };
 
@@ -137,6 +139,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
             <Image
               src={previewUrl || currentImageUrl || ""}
               alt="Profile"
+              width={200}
+              height={200}
               className="w-full h-full object-cover"
             />
             {isLoading && (
