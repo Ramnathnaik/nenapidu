@@ -1,7 +1,5 @@
 import { ClerkProvider, SignedIn } from "@clerk/nextjs";
 import type { Metadata } from "next";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import Sidebar from "./components/Sidebar";
 import ThemeWrapper from "./components/ThemeWrapper";
 import "./globals.css";
@@ -27,18 +25,6 @@ export default function RootLayout({
               </SignedIn>
               <main className="flex-1">{children}</main>
             </div>
-            <ToastContainer
-              position="top-right"
-              autoClose={5000}
-              hideProgressBar={false}
-              newestOnTop={false}
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="colored"
-            />
           </ThemeWrapper>
         </body>
       </ClerkProvider>
