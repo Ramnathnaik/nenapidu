@@ -22,10 +22,15 @@ const AddReminderPage = () => {
   const [description, setDescription] = useState("");
   const [dateToRemember, setDateToRemember] = useState("");
   const [frequency, setFrequency] = useState("NEVER");
-  const [shouldExpire, setShouldExpire] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
+
+  // Get today's date in YYYY-MM-DD format for min date restriction
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  };
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
@@ -96,7 +101,6 @@ const AddReminderPage = () => {
           description,
           dateToRemember: formattedDate,
           frequency,
-          shouldExpire,
           completed: false,
           userId,
           profileId,
@@ -226,6 +230,7 @@ const AddReminderPage = () => {
                 id="dateToRemember-mobile"
                 value={dateToRemember}
                 onChange={(e) => setDateToRemember(e.target.value)}
+                min={getTodayDate()}
                 className="w-full px-4 py-2 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                 required
               />
@@ -249,21 +254,6 @@ const AddReminderPage = () => {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="mb-6 flex items-center">
-              <input
-                type="checkbox"
-                id="shouldExpire-mobile"
-                checked={shouldExpire}
-                onChange={(e) => setShouldExpire(e.target.checked)}
-                className="w-4 h-4 mr-2 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-              />
-              <label
-                htmlFor="shouldExpire-mobile"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Should Expire
-              </label>
             </div>
             <div className="flex justify-end">
               <button
@@ -318,6 +308,7 @@ const AddReminderPage = () => {
                         id="dateToRemember"
                         value={dateToRemember}
                         onChange={(e) => setDateToRemember(e.target.value)}
+                        min={getTodayDate()}
                         className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                         required
                       />
@@ -341,53 +332,53 @@ const AddReminderPage = () => {
                     />
                   </div>
 
-                  {/* Profile Selection */}
-                  <div className="mb-6">
-                    <label
-                      htmlFor="profile"
-                      className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      Associate with Profile *
-                    </label>
-                    {profilesLoading ? (
-                      <div className="w-full px-4 py-3 text-gray-500 bg-gray-100 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400">
-                        Loading profiles...
-                      </div>
-                    ) : profiles.length === 0 ? (
-                      <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                        <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
-                          No profiles found. Please create a profile first to
-                          add reminders.
-                        </p>
-                        <Link
-                          href="/profile/add"
-                          className="inline-flex items-center px-3 py-1 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-800/30 rounded-md hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
-                        >
-                          Create Profile
-                        </Link>
-                      </div>
-                    ) : (
-                      <select
-                        id="profile"
-                        value={profileId || ""}
-                        onChange={(e) => setProfileId(e.target.value)}
-                        className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                        required
-                      >
-                        <option value="">Select a profile</option>
-                        {profiles.map((profile) => (
-                          <option
-                            key={profile.profileId}
-                            value={profile.profileId}
-                          >
-                            {profile.profileName}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-
+                  {/* Profile Selection and Frequency - Side by Side */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div>
+                      <label
+                        htmlFor="profile"
+                        className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        Associate with Profile *
+                      </label>
+                      {profilesLoading ? (
+                        <div className="w-full px-4 py-3 text-gray-500 bg-gray-100 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400">
+                          Loading profiles...
+                        </div>
+                      ) : profiles.length === 0 ? (
+                        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                          <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
+                            No profiles found. Please create a profile first to
+                            add reminders.
+                          </p>
+                          <Link
+                            href="/profile/add"
+                            className="inline-flex items-center px-3 py-1 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-800/30 rounded-md hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
+                          >
+                            Create Profile
+                          </Link>
+                        </div>
+                      ) : (
+                        <select
+                          id="profile"
+                          value={profileId || ""}
+                          onChange={(e) => setProfileId(e.target.value)}
+                          className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                          required
+                        >
+                          <option value="">Select a profile</option>
+                          {profiles.map((profile) => (
+                            <option
+                              key={profile.profileId}
+                              value={profile.profileId}
+                            >
+                              {profile.profileName}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
                     <div>
                       <label
                         htmlFor="frequency"
@@ -407,23 +398,6 @@ const AddReminderPage = () => {
                           </option>
                         ))}
                       </select>
-                    </div>
-                    <div className="flex items-end">
-                      <div className="flex items-center h-12">
-                        <input
-                          type="checkbox"
-                          id="shouldExpire"
-                          checked={shouldExpire}
-                          onChange={(e) => setShouldExpire(e.target.checked)}
-                          className="w-5 h-5 mr-3 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                        />
-                        <label
-                          htmlFor="shouldExpire"
-                          className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          Should Expire
-                        </label>
-                      </div>
                     </div>
                   </div>
 
@@ -477,7 +451,12 @@ const AddReminderPage = () => {
                   <li>• Set the date to when you want to be reminded</li>
                   <li>• Choose yearly for birthdays and anniversaries</li>
                   <li>• Monthly reminders work great for recurring tasks</li>
-                  <li>• Enable expiration for time-sensitive reminders</li>
+                  <li>
+                    • &quot;Never&quot; reminders expire after the date passes
+                  </li>
+                  <li>
+                    • Recurring reminders (monthly/yearly) don&#39;t expire
+                  </li>
                 </ul>
               </div>
             </div>

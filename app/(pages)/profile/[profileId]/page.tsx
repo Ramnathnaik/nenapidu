@@ -29,8 +29,8 @@ interface Reminder {
   shouldExpire: boolean;
   profileId: string;
   userId: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 const ProfilePage = () => {

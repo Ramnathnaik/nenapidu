@@ -17,8 +17,8 @@ interface Reminder {
   shouldExpire: boolean;
   profileId?: string;
   userId: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 const EditReminderPage = () => {
@@ -35,8 +35,13 @@ const EditReminderPage = () => {
   const [description, setDescription] = useState("");
   const [dateToRemember, setDateToRemember] = useState("");
   const [frequency, setFrequency] = useState("NEVER");
-  const [shouldExpire, setShouldExpire] = useState(false);
   const [completed, setCompleted] = useState(false);
+
+  // Get today's date in YYYY-MM-DD format for min date restriction
+  const getTodayDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
 
   // Fetch reminder data
   useEffect(() => {
@@ -58,7 +63,6 @@ const EditReminderPage = () => {
           setDescription(data.description || "");
           setDateToRemember(data.dateToRemember);
           setFrequency(data.frequency);
-          setShouldExpire(data.shouldExpire);
           setCompleted(data.completed);
         } else {
           const errorData = await response.json();
@@ -138,7 +142,6 @@ const EditReminderPage = () => {
           description,
           dateToRemember: formattedDate,
           frequency,
-          shouldExpire,
           completed,
           userId,
           profileId: reminder.profileId,
@@ -290,6 +293,7 @@ const EditReminderPage = () => {
                 id="dateToRemember-mobile"
                 value={dateToRemember}
                 onChange={(e) => setDateToRemember(e.target.value)}
+                min={getTodayDate()}
                 className="w-full px-4 py-2 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                 required
                 disabled={submitting}
@@ -315,22 +319,6 @@ const EditReminderPage = () => {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="mb-6 flex items-center">
-              <input
-                type="checkbox"
-                id="shouldExpire-mobile"
-                checked={shouldExpire}
-                onChange={(e) => setShouldExpire(e.target.checked)}
-                className="w-4 h-4 mr-2 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                disabled={submitting}
-              />
-              <label
-                htmlFor="shouldExpire-mobile"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Should Expire
-              </label>
             </div>
             <div className="mb-6 flex items-center">
               <input
@@ -409,6 +397,7 @@ const EditReminderPage = () => {
                         id="dateToRemember"
                         value={dateToRemember}
                         onChange={(e) => setDateToRemember(e.target.value)}
+                        min={getTodayDate()}
                         className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
                         required
                         disabled={submitting}
@@ -456,23 +445,7 @@ const EditReminderPage = () => {
                         ))}
                       </select>
                     </div>
-                    <div className="flex flex-col justify-center space-y-4">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="shouldExpire"
-                          checked={shouldExpire}
-                          onChange={(e) => setShouldExpire(e.target.checked)}
-                          className="w-5 h-5 mr-3 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                          disabled={submitting}
-                        />
-                        <label
-                          htmlFor="shouldExpire"
-                          className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          Should Expire
-                        </label>
-                      </div>
+                    <div className="flex flex-col justify-center">
                       <div className="flex items-center">
                         <input
                           type="checkbox"
@@ -523,12 +496,14 @@ const EditReminderPage = () => {
                       Created
                     </div>
                     <div className="text-gray-600 dark:text-gray-400">
-                      {new Date(reminder.dateToRemember).toLocaleDateString(
+                      {new Date(reminder.createdAt).toLocaleDateString(
                         "en-US",
                         {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
                         }
                       )}
                     </div>
@@ -538,12 +513,14 @@ const EditReminderPage = () => {
                       Last Updated
                     </div>
                     <div className="text-gray-600 dark:text-gray-400">
-                      {new Date(reminder.dateToRemember).toLocaleDateString(
+                      {new Date(reminder.updatedAt).toLocaleDateString(
                         "en-US",
                         {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
                         }
                       )}
                     </div>
