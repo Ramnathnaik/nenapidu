@@ -7,19 +7,24 @@ import Link from "next/link";
 import swal from "@/app/utils/swal";
 
 interface Reminder {
-  id: number;
-  description: string;
+  id: string;
+  title: string;
+  description?: string;
   dateToRemember: string;
-  reminderType: string;
+  frequency: "NEVER" | "MONTH" | "YEAR";
   completed: boolean;
-  profileId: number;
+  shouldExpire: boolean;
+  profileId: string;
+  userId: string;
   profileName?: string;
   profileImgUrl?: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 interface ReminderCardProps {
   reminder: Reminder;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
   onUpdate: (updatedReminder: Reminder) => void;
 }
 
@@ -37,18 +42,29 @@ const ReminderCard = ({ reminder, onDelete, onUpdate }: ReminderCardProps) => {
     });
   };
 
-  const getReminderTypeIcon = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case "birthday":
-        return "🎂";
-      case "anniversary":
-        return "💖";
-      case "meeting":
-        return "🤝";
-      case "call":
-        return "📞";
+  const getFrequencyIcon = (frequency: string) => {
+    switch (frequency?.toLowerCase()) {
+      case "never":
+        return "⏰";
+      case "month":
+        return "📅";
+      case "year":
+        return "🗓️";
       default:
         return "⏰";
+    }
+  };
+
+  const getFrequencyText = (frequency: string) => {
+    switch (frequency) {
+      case "NEVER":
+        return "One-time";
+      case "MONTH":
+        return "Monthly";
+      case "YEAR":
+        return "Yearly";
+      default:
+        return frequency;
     }
   };
 
@@ -70,8 +86,12 @@ const ReminderCard = ({ reminder, onDelete, onUpdate }: ReminderCardProps) => {
     swal.loading('Deleting...', 'Please wait while we delete your reminder.');
 
     try {
-      const response = await fetch(`/api/reminders/${reminder.id}`, {
+      const response = await fetch('/api/reminders', {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: reminder.id }),
       });
 
       if (response.ok) {
@@ -95,12 +115,13 @@ const ReminderCard = ({ reminder, onDelete, onUpdate }: ReminderCardProps) => {
     swal.loading('Updating...', 'Please wait while we update your reminder.');
 
     try {
-      const response = await fetch(`/api/reminders/single/${reminder.id}`, {
+      const response = await fetch('/api/reminders', {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          id: reminder.id,
           completed: !reminder.completed,
         }),
       });
@@ -131,14 +152,14 @@ const ReminderCard = ({ reminder, onDelete, onUpdate }: ReminderCardProps) => {
         <div className="flex-1">
           <div className="flex items-center mb-2">
             <span className="text-2xl mr-2">
-              {getReminderTypeIcon(reminder.reminderType)}
+              {getFrequencyIcon(reminder.frequency)}
             </span>
             <span className="inline-block px-2 py-1 text-xs font-medium text-blue-800 dark:text-blue-200 bg-blue-100 dark:bg-blue-900 rounded-full mr-2">
-              {reminder.reminderType}
+              {getFrequencyText(reminder.frequency)}
             </span>
             {reminder.completed ? (
               <span className="inline-block px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-full">
-                Inactive
+                Completed
               </span>
             ) : (
               <span className="inline-block px-2 py-1 text-xs font-medium text-green-800 dark:text-green-200 bg-green-100 dark:bg-green-900 rounded-full">
@@ -148,8 +169,13 @@ const ReminderCard = ({ reminder, onDelete, onUpdate }: ReminderCardProps) => {
           </div>
 
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            {reminder.description}
+            {reminder.title}
           </h3>
+          {reminder.description && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              {reminder.description}
+            </p>
+          )}
 
           <div className="flex items-center text-gray-600 dark:text-gray-400 mb-3">
             <Calendar className="w-4 h-4 mr-2" />

@@ -32,7 +32,6 @@ export async function POST(request: Request) {
       dateToRemember,
       completed,
       userId,
-      shouldExpire,
       frequency,
       profileId,
     } = await request.json();
@@ -43,22 +42,21 @@ export async function POST(request: Request) {
       !dateToRemember ||
       typeof completed !== "boolean" ||
       !userId ||
-      typeof shouldExpire !== "boolean" ||
       !frequency
     ) {
       return NextResponse.json(
         {
           error:
-            "Missing required fields: title, dateToRemember, completed, userId, shouldExpire, frequency",
+            "Missing required fields: title, dateToRemember, completed, userId, frequency",
         },
         { status: 400 }
       );
     }
 
     // Validate frequency enum using helper function
-    // NEVER: Non-recurring reminder (one-time only)
-    // MONTH: Recurring monthly reminder
-    // YEAR: Recurring yearly reminder
+    // NEVER: Non-recurring reminder (one-time only) - should expire after date passes
+    // MONTH: Recurring monthly reminder - should not expire
+    // YEAR: Recurring yearly reminder - should not expire
     if (!isValidFrequency(frequency)) {
       return NextResponse.json(
         {
@@ -68,6 +66,11 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    // Automatically determine shouldExpire based on frequency
+    // If frequency is NEVER, reminder should expire after the date passes
+    // If frequency is MONTH or YEAR, reminder should not expire (recurring)
+    const shouldExpire = frequency === "NEVER";
 
     const newReminder = await createReminder({
       title,
@@ -107,7 +110,6 @@ export async function PUT(request: Request) {
       dateToRemember,
       completed,
       userId,
-      shouldExpire,
       frequency,
       profileId,
     } = await request.json();
@@ -119,9 +121,9 @@ export async function PUT(request: Request) {
     }
 
     // Validate frequency if provided using helper function
-    // NEVER: Non-recurring reminder (one-time only)
-    // MONTH: Recurring monthly reminder
-    // YEAR: Recurring yearly reminder
+    // NEVER: Non-recurring reminder (one-time only) - should expire after date passes
+    // MONTH: Recurring monthly reminder - should not expire
+    // YEAR: Recurring yearly reminder - should not expire
     if (frequency !== undefined && !isValidFrequency(frequency)) {
       return NextResponse.json(
         {
@@ -149,9 +151,13 @@ export async function PUT(request: Request) {
       updateData.dateToRemember = dateToRemember;
     if (completed !== undefined) updateData.completed = completed;
     if (userId !== undefined) updateData.userId = userId;
-    if (shouldExpire !== undefined) updateData.shouldExpire = shouldExpire;
-    if (frequency !== undefined)
+    if (frequency !== undefined) {
       updateData.frequency = frequency as FrequencyType;
+      // Automatically determine shouldExpire based on frequency
+      // If frequency is NEVER, reminder should expire after the date passes
+      // If frequency is MONTH or YEAR, reminder should not expire (recurring)
+      updateData.shouldExpire = frequency === "NEVER";
+    }
     if (profileId !== undefined) updateData.profileId = profileId;
 
     const updatedReminder = await updateReminder(id, updateData);

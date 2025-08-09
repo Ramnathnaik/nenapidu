@@ -65,9 +65,15 @@ export async function updateReminder(
   updateData: UpdateReminderData
 ) {
   try {
+    // Always update the updatedAt timestamp when updating a reminder
+    const dataWithTimestamp = {
+      ...updateData,
+      updatedAt: new Date(),
+    };
+
     const updatedReminder = await db
       .update(remindersTable)
-      .set(updateData)
+      .set(dataWithTimestamp)
       .where(eq(remindersTable.id, reminderId))
       .returning();
 
@@ -141,8 +147,8 @@ export async function getRemindersByUserIdWithProfile(userId: string) {
         frequency: remindersTable.frequency,
         userId: remindersTable.userId,
         profileId: remindersTable.profileId,
-        // createdAt: remindersTable.createdAt, // Uncomment if column exists
-        // updatedAt: remindersTable.updatedAt, // Uncomment if column exists
+        createdAt: remindersTable.createdAt,
+        updatedAt: remindersTable.updatedAt,
         profileName: profileTable.profileName,
         profileImgUrl: profileTable.profileImgUrl,
       })

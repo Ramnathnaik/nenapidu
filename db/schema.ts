@@ -3,6 +3,7 @@ import {
   date,
   pgEnum,
   pgTable,
+  timestamp,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -38,6 +39,8 @@ export const remindersTable = pgTable("reminders", {
   frequency: frequencyEnum("frequency").notNull(),
   userId: varchar("userId", { length: 256 }).notNull(),
   profileId: uuid("profileId").references(() => profileTable.profileId),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Reminder = typeof remindersTable.$inferSelect;

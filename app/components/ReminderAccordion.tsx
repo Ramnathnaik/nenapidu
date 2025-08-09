@@ -20,8 +20,8 @@ interface Reminder {
   shouldExpire: boolean;
   profileId: string;
   userId: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 interface ReminderAccordionProps {
@@ -174,8 +174,8 @@ const ReminderAccordion: React.FC<ReminderAccordionProps> = ({
                   </div>
 
                   <div className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    Created: {formatDate(reminder.dateToRemember)} •
-                    Updated: {formatDate(reminder.dateToRemember)}
+                    Created: {formatDate(reminder.createdAt.toString())} •
+                    Updated: {formatDate(reminder.updatedAt.toString())}
                   </div>
                 </div>
               </div>

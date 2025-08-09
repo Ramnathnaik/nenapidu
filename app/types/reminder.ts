@@ -12,6 +12,8 @@ export interface Reminder {
   frequency: FrequencyType;
   userId: string;
   profileId?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface NewReminder {
@@ -23,6 +25,8 @@ export interface NewReminder {
   frequency: FrequencyType;
   userId: string;
   profileId?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface UpdateReminder {
@@ -35,13 +39,14 @@ export interface UpdateReminder {
   frequency?: FrequencyType;
   userId?: string;
   profileId?: string;
+  updatedAt?: Date;
 }
 
 // Frequency descriptions for UI components
 export const FREQUENCY_OPTIONS = [
-  { value: "NEVER", label: "Never (One-time only)", description: "This reminder will not repeat" },
-  { value: "MONTH", label: "Monthly", description: "This reminder will repeat every month" },
-  { value: "YEAR", label: "Yearly", description: "This reminder will repeat every year" },
+  { value: "NEVER", label: "Never (One-time only)", description: "This reminder will not repeat and will expire after the date passes" },
+  { value: "MONTH", label: "Monthly", description: "This reminder will repeat every month and will not expire" },
+  { value: "YEAR", label: "Yearly", description: "This reminder will repeat every year and will not expire" },
 ] as const;
 
 // Helper function to validate frequency
