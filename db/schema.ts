@@ -43,7 +43,19 @@ export const remindersTable = pgTable("reminders", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
+export const favouritesTable = pgTable("favourites", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  title: varchar("title", { length: 256 }).notNull(),
+  description: varchar("description"),
+  userId: varchar("userId", { length: 256 }).notNull().references(() => usersTable.userId),
+  profileId: uuid("profileId").notNull().references(() => profileTable.profileId),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
 export type Reminder = typeof remindersTable.$inferSelect;
 export type NewReminder = typeof remindersTable.$inferInsert;
 export type Profile = typeof profileTable.$inferSelect;
 export type NewProfile = typeof profileTable.$inferInsert;
+export type Favourite = typeof favouritesTable.$inferSelect;
+export type NewFavourite = typeof favouritesTable.$inferInsert;
