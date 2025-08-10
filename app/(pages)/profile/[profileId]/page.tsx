@@ -1,15 +1,13 @@
 "use client";
 
-import {
-  ArrowLeft,
-  Bell,
-} from "lucide-react";
+import { ArrowLeft, Bell, Heart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import swal from "@/app/utils/swal";
 import ReminderAccordion from "@/app/components/ReminderAccordion";
+import FavouriteAccordion from "@/app/components/FavouriteAccordion";
 
 interface Profile {
   profileId: string;
@@ -33,18 +31,36 @@ interface Reminder {
   updatedAt: string | Date;
 }
 
+interface Favourite {
+  id: string;
+  title: string;
+  description?: string | null;
+  userId: string;
+  profileId: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
 const ProfilePage = () => {
   const { profileId } = useParams();
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [favourites, setFavourites] = useState<Favourite[]>([]);
   const [loading, setLoading] = useState(true);
   const [remindersLoading, setRemindersLoading] = useState(true);
+  const [favouritesLoading, setFavouritesLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expandedReminders, setExpandedReminders] = useState<Set<string>>(
     new Set()
   );
+  const [expandedFavourites, setExpandedFavourites] = useState<Set<string>>(
+    new Set()
+  );
   const [deletingReminder, setDeletingReminder] = useState<string | null>(null);
+  const [deletingFavourite, setDeletingFavourite] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -118,6 +134,41 @@ const ProfilePage = () => {
     fetchReminders();
   }, [profileId]);
 
+  // Fetch favourites for the profile
+  useEffect(() => {
+    const fetchFavourites = async () => {
+      if (!profileId) {
+        setFavouritesLoading(false);
+        return;
+      }
+
+      try {
+        setFavouritesLoading(true);
+        const response = await fetch(`/api/favourites/profile/${profileId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setFavourites(data);
+        } else {
+          console.error("Failed to fetch favourites");
+          swal.error(
+            "Error loading favourites",
+            "Failed to load favourites for this profile."
+          );
+        }
+      } catch (error) {
+        console.error("Failed to fetch favourites:", error);
+        swal.error(
+          "Error loading favourites",
+          "Failed to load favourites for this profile."
+        );
+      } finally {
+        setFavouritesLoading(false);
+      }
+    };
+
+    fetchFavourites();
+  }, [profileId]);
+
   // Toggle reminder expansion
   const toggleReminderExpansion = (reminderId: string) => {
     const newExpanded = new Set(expandedReminders);
@@ -185,15 +236,17 @@ const ProfilePage = () => {
   };
 
   // Format date for display
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateValue: string | Date) => {
     try {
-      return new Date(dateString).toLocaleDateString("en-US", {
+      const date =
+        typeof dateValue === "string" ? new Date(dateValue) : dateValue;
+      return date.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",
       });
     } catch {
-      return dateString;
+      return String(dateValue);
     }
   };
 
@@ -211,8 +264,74 @@ const ProfilePage = () => {
     }
   };
 
+  // Toggle favourite expansion
+  const toggleFavouriteExpansion = (favouriteId: string) => {
+    const newExpanded = new Set(expandedFavourites);
+    if (newExpanded.has(favouriteId)) {
+      newExpanded.delete(favouriteId);
+    } else {
+      newExpanded.add(favouriteId);
+    }
+    setExpandedFavourites(newExpanded);
+  };
+
+  // Handle edit favourite
+  const handleEditFavourite = (favouriteId: string) => {
+    router.push(`/favourite/${favouriteId}/edit`);
+  };
+
+  // Handle delete favourite
+  const handleDeleteFavourite = async (favouriteId: string) => {
+    const result = await swal.warning(
+      "Delete Favourite?",
+      "Are you sure you want to delete this favourite? This action cannot be undone.",
+      "Yes, delete it!",
+      "Cancel"
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    setDeletingFavourite(favouriteId);
+    swal.loading(
+      "Deleting favourite...",
+      "Please wait while we delete the favourite."
+    );
+
+    try {
+      const response = await fetch("/api/favourites", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: favouriteId }),
+      });
+
+      if (response.ok) {
+        setFavourites(favourites.filter((f) => f.id !== favouriteId));
+        swal.success(
+          "Favourite deleted!",
+          "The favourite has been deleted successfully."
+        );
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete favourite");
+      }
+    } catch (error) {
+      console.error("Failed to delete favourite:", error);
+      let message = "Failed to delete favourite";
+      if (error instanceof Error) {
+        message = error.message;
+      }
+      swal.error("Deletion failed", message, 5000);
+    } finally {
+      setDeletingFavourite(null);
+    }
+  };
+
   return (
-    <main className="flex-1 p-8 h-full overflow-y-auto bg-gray-300 dark:bg-gray-800">
+    <main className="flex-1 p-4 max-w-screen h-full overflow-y-auto bg-gray-300 dark:bg-gray-800">
       <div className="flex items-center mb-8">
         <Link href="/dashboard">
           <ArrowLeft className="w-6 h-6 mr-4 text-gray-700 dark:text-gray-300 hover:text-violet-500 dark:hover:text-violet-400" />
@@ -331,6 +450,53 @@ const ProfilePage = () => {
                   onDelete={handleDeleteReminder}
                   formatDate={formatDate}
                   getFrequencyText={getFrequencyText}
+                />
+              )}
+            </div>
+
+            {/* Favourites Section */}
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                  <Heart className="w-5 h-5" />
+                  Favourites ({favourites.length})
+                </h2>
+                <Link
+                  href={`/favourite/add?profileId=${
+                    profile.profileId
+                  }&profileName=${encodeURIComponent(profile.profileName)}`}
+                  className="px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors text-sm font-medium"
+                >
+                  Add Favourite
+                </Link>
+              </div>
+
+              {favouritesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
+                  <span className="ml-3 text-gray-600 dark:text-gray-400">
+                    Loading favourites...
+                  </span>
+                </div>
+              ) : favourites.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <Heart className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400 mb-2">
+                    No favourites yet
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                    Add your first favourite memory for this profile
+                  </p>
+                </div>
+              ) : (
+                <FavouriteAccordion
+                  favourites={favourites}
+                  expandedFavourites={expandedFavourites}
+                  deletingFavourite={deletingFavourite}
+                  onToggleExpansion={toggleFavouriteExpansion}
+                  onEdit={handleEditFavourite}
+                  onDelete={handleDeleteFavourite}
+                  formatDate={formatDate}
                 />
               )}
             </div>

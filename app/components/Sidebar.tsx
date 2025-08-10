@@ -1,7 +1,7 @@
 "use client";
 
 import { SignOutButton } from "@clerk/nextjs";
-import { Plus, Bell, LogOut, Users } from "lucide-react";
+import { Plus, Bell, LogOut, Users, Heart } from "lucide-react";
 import Link from "next/link";
 import useTheme from "../utils/store";
 
@@ -55,6 +55,22 @@ const Sidebar = () => {
           >
             <Plus className="w-5 h-5 mr-2" />
             Add Reminder
+          </Link>
+          <Link
+            href="/favourites"
+            className="flex items-center w-full px-4 py-2 mb-4 text-left text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700"
+            onClick={handleNavigation}
+          >
+            <Heart className="w-5 h-5 mr-2" />
+            Favourites
+          </Link>
+          <Link
+            href="/favourite/add"
+            className="flex items-center w-full px-4 py-2 mb-4 text-left text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700"
+            onClick={handleNavigation}
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Favourite
           </Link>
         </div>
         <div>

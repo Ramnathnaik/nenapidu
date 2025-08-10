@@ -1,5 +1,6 @@
 "use client";
 import { ArrowLeft } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
@@ -35,7 +36,9 @@ const AddReminderPage = () => {
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     const profileParam = queryParams.get("profileId");
-    setProfileId(profileParam);
+    if (profileParam) {
+      setProfileId(profileParam);
+    }
   }, []);
 
   // Fetch user profiles
@@ -48,11 +51,6 @@ const AddReminderPage = () => {
         if (response.ok) {
           const profilesData = await response.json();
           setProfiles(profilesData || []);
-
-          // If no profileId is set from query params and profiles exist, set the first one as default
-          if (!profileId && profilesData && profilesData.length > 0) {
-            setProfileId(profilesData[0].profileId);
-          }
         }
       } catch (error) {
         console.error("Failed to fetch profiles:", error);
@@ -63,7 +61,14 @@ const AddReminderPage = () => {
     };
 
     fetchProfiles();
-  }, [userId, profileId]);
+  }, [userId]);
+
+  // Auto-select profile if only one exists and no profile is already selected
+  useEffect(() => {
+    if (!profileId && profiles.length === 1 && !profilesLoading) {
+      setProfileId(profiles[0].profileId);
+    }
+  }, [profiles, profileId, profilesLoading]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -205,7 +210,8 @@ const AddReminderPage = () => {
                   id="profile-mobile"
                   value={profileId || ""}
                   onChange={(e) => setProfileId(e.target.value)}
-                  className="w-full px-4 py-2 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                  disabled={profiles.length === 1}
+                  className="w-full px-4 py-2 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   required
                 >
                   <option value="">Select a profile</option>
@@ -216,7 +222,53 @@ const AddReminderPage = () => {
                   ))}
                 </select>
               )}
+              {profiles.length === 1 && (
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  Automatically selected as the only profile
+                </p>
+              )}
             </div>
+
+            {/* Selected Profile Preview */}
+            {profileId &&
+              profiles.length > 0 &&
+              (() => {
+                const selectedProfile = profiles.find(
+                  (p) => p.profileId === profileId
+                );
+                if (!selectedProfile) return null;
+
+                return (
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-6 overflow-hidden">
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-12 h-12 flex-shrink-0">
+                        <Image
+                          src={
+                            selectedProfile.profileImgUrl ||
+                            "/default-profile.png"
+                          }
+                          alt="Profile"
+                          fill
+                          className="rounded-full object-cover"
+                          onError={(e) => {
+                            const img = e.target as HTMLImageElement;
+                            img.src = "/default-profile.png";
+                          }}
+                        />
+                      </div>
+                      <div className="overflow-hidden">
+                        <h3 className="font-medium text-gray-800 text-wrap dark:text-white text-sm truncate">
+                          {selectedProfile.profileName}
+                        </h3>
+                        <p className="text-xs text-gray-500 text-wrap dark:text-gray-400 truncate">
+                          {selectedProfile.profileDescription ||
+                            "No description"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
             <div className="mb-6">
               <label
@@ -258,7 +310,7 @@ const AddReminderPage = () => {
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="px-6 py-2 font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700"
+                className="px-6 py-2 font-semibold cursor-pointer text-white bg-violet-500 rounded-lg hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700"
               >
                 Add Reminder
               </button>
@@ -363,7 +415,8 @@ const AddReminderPage = () => {
                           id="profile"
                           value={profileId || ""}
                           onChange={(e) => setProfileId(e.target.value)}
-                          className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                          disabled={profiles.length === 1}
+                          className="w-full px-4 py-3 text-gray-900 bg-gray-100 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                           required
                         >
                           <option value="">Select a profile</option>
@@ -376,6 +429,11 @@ const AddReminderPage = () => {
                             </option>
                           ))}
                         </select>
+                      )}
+                      {profiles.length === 1 && (
+                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                          Automatically selected as the only profile
+                        </p>
                       )}
                     </div>
 
@@ -401,16 +459,57 @@ const AddReminderPage = () => {
                     </div>
                   </div>
 
+                  {/* Selected Profile Preview */}
+                  {profileId &&
+                    profiles.length > 0 &&
+                    (() => {
+                      const selectedProfile = profiles.find(
+                        (p) => p.profileId === profileId
+                      );
+                      if (!selectedProfile) return null;
+
+                      return (
+                        <div className="mb-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                          <div className="flex items-center gap-4">
+                            <div className="relative w-16 h-16 flex-shrink-0">
+                              <Image
+                                src={
+                                  selectedProfile.profileImgUrl ||
+                                  "/default-profile.png"
+                                }
+                                alt="Profile"
+                                fill
+                                className="rounded-full object-cover"
+                                onError={(e) => {
+                                  const img = e.target as HTMLImageElement;
+                                  img.src = "/default-profile.png";
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <h3 className="font-medium text-gray-800 dark:text-white text-lg">
+                                {selectedProfile.profileName}
+                              </h3>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {selectedProfile.profileDescription ||
+                                  "No description"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                   <div className="flex justify-end space-x-4">
                     <Link
                       href="/dashboard"
-                      className="px-6 py-3 font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
+                      className="px-6 py-3 cursor-pointer font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
                     >
                       Cancel
                     </Link>
                     <button
                       type="submit"
-                      className="px-8 py-3 font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700 transition-colors shadow-lg"
+                      className="px-8 py-3 cursor-pointer font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700 transition-colors shadow-lg"
                     >
                       Create Reminder
                     </button>

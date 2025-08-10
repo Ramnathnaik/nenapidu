@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Bell, ArrowLeft, Filter, X, User, CheckCircle, Clock } from "lucide-react";
+import { Bell, ArrowLeft, Filter, X, User, CheckCircle, Clock, Plus } from "lucide-react";
 import Link from "next/link";
 import ReminderCard from "@/app/components/ReminderCard";
 
@@ -130,25 +130,36 @@ const RemindersPage = () => {
             <Link href="/dashboard">
               <ArrowLeft className="w-6 h-6 mr-4 text-gray-700 dark:text-gray-300 hover:text-violet-500 dark:hover:text-violet-400" />
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <Bell className="w-6 h-6 text-violet-500" />
               My Reminders
             </h1>
           </div>
           
-          {reminders.length > 0 && (
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shadow-sm"
+          <div className="flex items-center gap-3">
+            {reminders.length > 0 && (
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shadow-sm"
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                Filters
+                {hasActiveFilters && (
+                  <span className="ml-2 px-2 py-1 text-xs bg-violet-100 dark:bg-violet-900 text-violet-800 dark:text-violet-200 rounded-full">
+                    {[selectedProfile ? '1' : '', statusFilter ? '1' : ''].filter(Boolean).length}
+                  </span>
+                )}
+              </button>
+            )}
+            
+            <Link
+              href="/reminder/add"
+              className="hidden sm:flex items-center px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors text-sm font-medium gap-2"
             >
-              <Filter className="w-4 h-4 mr-2" />
-              Filters
-              {hasActiveFilters && (
-                <span className="ml-2 px-2 py-1 text-xs bg-violet-100 dark:bg-violet-900 text-violet-800 dark:text-violet-200 rounded-full">
-                  {[selectedProfile ? '1' : '', statusFilter ? '1' : ''].filter(Boolean).length}
-                </span>
-              )}
-            </button>
-          )}
+              <Plus className="w-4 h-4" />
+              Add Reminder
+            </Link>
+          </div>
         </div>
 
         {/* Filters Panel */}
@@ -273,9 +284,16 @@ const RemindersPage = () => {
             <h2 className="text-xl font-semibold text-gray-600 dark:text-gray-400 mb-2">
               No reminders yet
             </h2>
-            <p className="text-gray-500 dark:text-gray-500">
+            <p className="text-gray-500 dark:text-gray-500 mb-6">
               Add some reminders to keep track of important dates and events.
             </p>
+            <Link
+              href="/reminder/add"
+              className="inline-flex items-center px-6 py-3 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors font-medium gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Add Your First Reminder
+            </Link>
           </div>
         ) : filteredReminders.length === 0 ? (
           <div className="text-center py-12">

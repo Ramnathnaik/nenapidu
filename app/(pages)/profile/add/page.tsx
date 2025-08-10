@@ -24,17 +24,20 @@ const AddProfilePage = () => {
     e.preventDefault();
 
     if (!profileName) {
-      swal.error('Profile name required', 'Profile name is required.');
+      swal.error("Profile name required", "Profile name is required.");
       return;
     }
 
     if (!userId) {
-      swal.error('Authentication required', 'User authentication required.');
+      swal.error("Authentication required", "User authentication required.");
       return;
     }
 
     setIsSubmitting(true);
-    swal.loading('Creating profile...', 'Please wait while we create your profile.');
+    swal.loading(
+      "Creating profile...",
+      "Please wait while we create your profile."
+    );
 
     try {
       // Step 1: Create the profile
@@ -59,7 +62,10 @@ const AddProfilePage = () => {
 
       // Step 2: Upload image if one was selected
       if (selectedImage && newProfile.profileId) {
-        swal.loading('Uploading profile image...', 'Please wait while the image is being uploaded.');
+        swal.loading(
+          "Uploading profile image...",
+          "Please wait while the image is being uploaded."
+        );
 
         const formData = new FormData();
         formData.append("file", selectedImage);
@@ -77,7 +83,10 @@ const AddProfilePage = () => {
         }
       }
 
-      swal.success('Profile created!', 'Your profile was created successfully.');
+      swal.success(
+        "Profile created!",
+        "Your profile was created successfully."
+      );
 
       setTimeout(() => {
         router.push("/dashboard");
@@ -85,7 +94,7 @@ const AddProfilePage = () => {
     } catch (error) {
       console.error("Failed to create profile:", error);
       swal.error(
-        'An error occurred',
+        "An error occurred",
         error instanceof Error
           ? error.message
           : "An unexpected error occurred. Please try again.",
@@ -170,7 +179,7 @@ const AddProfilePage = () => {
               </Link>
               <button
                 type="submit"
-                className="px-8 py-2 font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700 transition-colors duration-200 shadow-lg hover:shadow-xl"
+                className="px-8 py-2 cursor-pointer font-semibold text-white bg-violet-500 rounded-lg hover:bg-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700 transition-colors duration-200 shadow-lg hover:shadow-xl"
               >
                 Add Profile
               </button>
