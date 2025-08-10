@@ -2,7 +2,6 @@
 
 import { useAuth } from "@clerk/nextjs";
 import {
-  AlertCircle,
   Bell,
   Calendar,
   Edit3,
@@ -12,92 +11,8 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import React, { useState } from "react";
 import swal from "@/app/utils/swal";
-
-// DeleteConfirmationModal component
-interface DeleteConfirmationModalProps {
-  isOpen: boolean;
-  profileName: string;
-  isDeleting: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}
-
-const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
-  isOpen,
-  profileName,
-  isDeleting,
-  onCancel,
-  onConfirm,
-}) => {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted || !isOpen) return null;
-
-  const modalContent = (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-      <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 relative"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Delete Profile
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              This action cannot be undone
-            </p>
-          </div>
-        </div>
-
-        <p className="text-gray-700 dark:text-gray-300 mb-6">
-          Are you sure you want to delete &quot;
-          <span className="font-semibold">{profileName}</span>&quot;? All
-          associated data will be permanently removed.
-        </p>
-
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
-            disabled={isDeleting}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isDeleting}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {isDeleting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="w-4 h-4" />
-                Delete Profile
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  return createPortal(modalContent, document.body);
-};
 
 interface Profile {
   profileId: string;
@@ -125,7 +40,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const router = useRouter();
   const { userId } = useAuth();
 
@@ -163,10 +77,22 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
     setShowMenu(false);
   };
 
-  // Handle Delete Profile
+  // Handle Delete Profile with SweetAlert confirmation
   const handleDeleteProfile = async () => {
     if (!userId) {
       swal.error('Authentication required', 'Please log in to delete this profile.');
+      return;
+    }
+
+    // Show SweetAlert confirmation dialog
+    const result = await swal.warning(
+      'Delete Profile?',
+      `Are you sure you want to delete "${profile.profileName}"? All associated reminders and favourites will be permanently removed. This action cannot be undone.`,
+      'Yes, delete it!',
+      'Cancel'
+    );
+
+    if (!result.isConfirmed) {
       return;
     }
 
@@ -202,7 +128,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       swal.error('Deletion failed', message, 5000);
     } finally {
       setIsDeleting(false);
-      setShowDeleteConfirm(false);
       setShowMenu(false);
     }
   };
@@ -210,7 +135,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   // Close menu when clicking outside
   const handleClickOutside = () => {
     setShowMenu(false);
-    setShowDeleteConfirm(false);
   };
 
   // Handle card click to navigate to profile page
@@ -284,8 +208,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        setShowDeleteConfirm(true);
-                        setShowMenu(false);
+                        handleDeleteProfile();
                       }}
                       className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       disabled={isDeleting}
@@ -300,14 +223,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
           </div>
         )}
 
-        {/* Delete Confirmation Modal - Portal Based */}
-        <DeleteConfirmationModal
-          isOpen={showDeleteConfirm}
-          profileName={profile.profileName}
-          isDeleting={isDeleting}
-          onCancel={() => setShowDeleteConfirm(false)}
-          onConfirm={handleDeleteProfile}
-        />
 
         {/* Profile Image */}
         <div className="absolute -bottom-8 left-6">
