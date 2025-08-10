@@ -3,7 +3,7 @@ import { ArrowLeft, Heart, FileText } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useUser } from "@clerk/nextjs";
 import swal from "@/app/utils/swal";
 
@@ -15,7 +15,7 @@ interface Profile {
   userId?: string;
 }
 
-const AddFavouritePage = () => {
+const AddFavouriteContent = () => {
   const { user } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -561,6 +561,27 @@ const AddFavouritePage = () => {
         </div>
       </div>
     </main>
+  );
+};
+
+const LoadingFallback = () => (
+  <main className="flex-1 p-4 md:p-8 h-full overflow-y-auto bg-gray-300 dark:bg-gray-800">
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-500 mx-auto mb-4"></div>
+        <p className="text-lg text-gray-500 dark:text-gray-400">
+          Loading...
+        </p>
+      </div>
+    </div>
+  </main>
+);
+
+const AddFavouritePage = () => {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AddFavouriteContent />
+    </Suspense>
   );
 };
 

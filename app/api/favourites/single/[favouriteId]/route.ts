@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
-  { params }: { params: { favouriteId: string } }
+  { params }: { params: Promise<{ favouriteId: string }> }
 ) {
   try {
-    const { favouriteId } = params;
+    const { favouriteId } = await params;
     
     if (!favouriteId) {
       return NextResponse.json(

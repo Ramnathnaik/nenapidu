@@ -4,7 +4,7 @@ import ProfileCard from "@/app/components/ProfileCard";
 // import useTheme from "@/app/utils/store";
 import { Plus } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 interface Profile {
@@ -20,7 +20,7 @@ const DashboardPage = () => {
   const { userId } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
 
-  const fetchProfiles = async () => {
+  const fetchProfiles = useCallback(async () => {
     if (!userId) return;
 
     try {
@@ -34,11 +34,11 @@ const DashboardPage = () => {
     } catch (error) {
       console.error("Failed to fetch profiles:", error);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
     fetchProfiles();
-  }, [userId]);
+  }, [userId, fetchProfiles]);
 
   const handleProfileDeleted = (deletedProfileId: string) => {
     // Remove the deleted profile from state immediately
